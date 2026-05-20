@@ -186,19 +186,5 @@ await page.getByRole('textbox', { name: /mm/i }).fill('08');
 await page.getByRole('textbox', { name: /yyyy/i }).fill('1999');
 
 await page.getByRole('button', { name: /pay and confirm order/i }).click();
-
-  /*
-  await page.getByText('Order Placed!').click();
-  await page.getByText('Order Placed!').click();
-  const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('link', { name: 'Download Invoice' }).click();
-  const download = await downloadPromise; */
-});
-  //step 6
-  
-
-
-
-
-/* await page.locator('input[data-qa="signup-email"]')
-    .fill(`test${Date.now()}@email.com`) */
+ 
+})
