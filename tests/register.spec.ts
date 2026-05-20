@@ -1,190 +1,129 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/base';
 
+import { HomePage } from '../pages/HomePage';
 import { LoginSignupPage } from '../pages/LoginSignupPage';
 import { AccountSetupPage } from '../pages/AccountSetupPage';
+import { ProductsPage } from '../pages/ProductsPage';
+import { CartPage } from '../pages/CartPage';
+import { PaymentPage } from '../pages/PaymentPage';
 
-import { signupData } from '../data/signupData';
+import { userData } from '../testdata/userData';
+import { productData } from '../testdata/productData';
+import { paymentData } from '../testdata/paymentData';
 
-test('User registration journey', async ({ page }) => {
-
-  test.setTimeout(60000);
-
-  // Create Page Objects
-  const loginSignupPage = new LoginSignupPage(page);
-
-  const accountSetupPage = new AccountSetupPage(page);
-
-  // Step 1 - Navigate to website
-  await page.goto('https://automationexercise.com/');
-
-  // Step 2 - Verify homepage
-  await expect(page).toHaveTitle(/Automation Exercise/);
-
-  // Handle consent popup
-  const consentButton =
-    page.getByRole('button', { name: /consent|accept/i });
-
-  if (await consentButton.isVisible()) {
-    await consentButton.click();
-  }
-
-  // Step 3 - Navigate to Signup/Login page
-  await loginSignupPage.navigateToLoginSignupPage();
-
-  // Step 4 - Start signup
-  await loginSignupPage.startSignup(
-    signupData.name,
-    signupData.email
-  );
-
-  // Step 5 - Verify account info page
-  await loginSignupPage.verifyAccountInfoPageVisible();
-
-  // Step 6 - Fill account setup info
-  await accountSetupPage.fillBasicInfo(
-    signupData.password,
-    signupData.day,
-    signupData.month,
-    signupData.year
-  );
-
-  // Step 7 - Preferences
-  await accountSetupPage.setPreferences();
-
-  // Step 8 - Personal details
-  await accountSetupPage.fillPersonalDetails(
-    signupData.firstName,
-    signupData.lastName
-  );
-
-  // Step 9 - Address details
-  await accountSetupPage.fillAddress(
-    signupData.address,
-    signupData.country,
-    signupData.state,
-    signupData.city,
-    signupData.zipcode,
-    signupData.mobile
-  );
-
-  // Step 10 - Submit account
-  await accountSetupPage.submit();
-
-  // Step 11 - Verify account created
-  await expect(
-    page.getByText(/account created/i)
-  ).toBeVisible();
-
-  // Step 12 - Continue
-  await page.locator('.btn.btn-primary').click();
-
-  // Step 13 - Delete account
-  await page.getByRole('link', { name: /delete account/i }).click();
-
-  // Step 14 - Verify account deleted
-  await expect(
-    page.getByText(/account deleted/i)
-  ).toBeVisible();
-
+test.beforeEach(async ({ page }) => {
+  const home = new HomePage(page);
+  await home.openHomePage();
 });
 
-test.only('Log in', async ({ page }) => {
+test('User registration journey', async ({ page }) => {
+  const home = new HomePage(page);
+  const login = new LoginSignupPage(page);
+  const account = new AccountSetupPage(page);
+  const user = userData.newUser();
 
-  test.setTimeout(60000);
-  //step 1/2
-  await page.goto('https://automationexercise.com/')
+  await home.verifyHomePageVisible();
+  await home.goToLogin();
 
-  // Step 3
-  await expect(page).toHaveTitle(/Automation Exercise/);
+  await login.startSignup(user.name, user.email);
+  await account.verifyAccountInfoPageVisible();
+  await account.fillBasicInfo(user.password, user.day, user.month, user.year);
+  await account.setPreferences();
+  await account.fillPersonalDetails(user.firstName, user.lastName);
+  await account.fillAddress(user.address, user.country, user.state, user.city, user.zipcode, user.mobile);
+  await account.submit();
 
-// Consent popup (SAFE)
-const consent = page.getByRole('button', { name: /consent|accept/i });
-if (await consent.isVisible().catch(() => false)) {
-  await consent.click();
-}
+  await account.verifyAccountCreated();
+  await account.continueAfterSignup();
+  await account.deleteAccount();
+  await account.verifyAccountDeleted();
+  await account.continueAfterDeletion();
+});
 
-// Login
-await page.click('a[href="/login"]');
+test.only('Place order and download invoice', async ({ page }) => {
+  const home = new HomePage(page);
+  const login = new LoginSignupPage(page);
+  const products = new ProductsPage(page);
+  const cart = new CartPage(page);
+  const payment = new PaymentPage(page);
+  const user = userData.existingUser;
 
-await page.locator("[data-qa='login-email']").fill('test401@hotmail.com');
-await page.getByRole('textbox', { name: /password/i }).fill('Test123');
-await page.getByRole('button', { name: /login/i }).click();
+  await home.goToLogin();
+  await login.login(user.email, user.password);
 
-await expect(page.getByText(/logged in as/i)).toBeVisible();
+  await home.goToProducts();
 
-// -----------------------------
-// PRODUCT 1
-// -----------------------------
-await page.getByRole('link', { name: /view product/i }).first().click();
+  await products.openProduct(0);
+  await products.setQuantity(4);
+  await products.addToCart();
+  await products.continueShopping();
 
-await page.waitForURL(/product_details/);
+  await products.openProductById(5);
+  await products.setQuantity(5);
+  await products.addToCart();
+  await products.continueShopping();
 
-const qty = page.locator('#quantity');
-await expect(qty).toBeVisible();
-await qty.fill('2');
+  await home.goToCart();
+  await cart.proceedToCheckout();
+  await cart.addMessage('Please ring flat');
+  await cart.placeOrder();
 
-const addToCartBtn = page.getByRole('button', { name: /add to cart/i });
-await expect(addToCartBtn).toBeVisible();
-await addToCartBtn.click();
+  await payment.expectOnPaymentPage();
+  await payment.fillPayment({
+    nameOnCard: paymentData.nameOnCard,
+    cardNumber: paymentData.cardNumber,
+    cvc: paymentData.cvc,
+    expiryMonth: paymentData.expiryMonth,
+    expiryYear: paymentData.expiryYear,
+  });
+  await payment.confirmOrder();
 
-await expect(page.locator('.modal-title')).toHaveText('Added!');
+  const download = await payment.downloadInvoice();
+  expect(download.suggestedFilename()).toContain('invoice');
+});
 
-const continueBtn = page.getByRole('button', { name: /continue shopping/i });
-await expect(continueBtn).toBeVisible();
-await continueBtn.click();
+test('Search products and verify cart after login', async ({ page }) => {
+  const home = new HomePage(page);
+  const login = new LoginSignupPage(page);
+  const products = new ProductsPage(page);
+  const cart = new CartPage(page);
+  const user = userData.existingUser;
 
-// -----------------------------
-// PRODUCT 2
-// -----------------------------
-await page.goto('https://automationexercise.com/product_details/5');
+  const addedProducts: string[] = [];
 
-await page.waitForURL(/product_details/);
+  for (const query of productData.queries) {
+    await home.goToProducts();
+    await products.search(query);
+    await products.verifySearchResults();
+    const productName = await products.addFromSearchResults(1);
+    addedProducts.push(productName);
+  }
 
-const qty2 = page.locator('#quantity');
-await expect(qty2).toBeVisible();
-await qty2.fill('1');
+  await home.goToCart();
+  const before = await cart.getItemsCount();
 
-const addToCartBtn2 = page.getByRole('button', { name: /add to cart/i });
-await expect(addToCartBtn2).toBeVisible();
-await addToCartBtn2.click();
+  await home.goToLogin();
+  await login.login(user.email, user.password);
 
-await expect(page.locator('.modal-title')).toHaveText('Added!');
+  await home.goToCart();
+  const after = await cart.getItemsCount();
+  expect(after).toBeGreaterThanOrEqual(before);
 
-await page.getByRole('button', { name: /continue shopping/i }).click();
+  for (const name of addedProducts) {
+    await expect(page.getByText(name)).toBeVisible();
+  }
+});
 
-// -----------------------------
-// CART
-// -----------------------------
-await page.getByRole('link', { name: /cart/i }).click();
+test('Remove all items from cart', async ({ page }) => {
+  const home = new HomePage(page);
+  const products = new ProductsPage(page);
+  const cart = new CartPage(page);
 
-await expect(page.getByText(/shopping cart/i)).toBeVisible();
+  await home.goToProducts();
+  await products.addFromSearchResults(3);
 
-// -----------------------------
-// CHECKOUT (FIXED POSITION)
-// -----------------------------
-await page.getByText(/proceed to checkout/i).click();
-
-await expect(page.getByText(/address details/i)).toBeVisible();
-
-await page.locator('textarea[name="message"]').fill('Please ring flat');
-
-await page.getByRole('link', { name: /place order/i }).click();
-
-// -----------------------------
-// PAYMENT
-// -----------------------------
-
-await expect(
-  page.getByRole('heading', { name: /payment/i })
-).toBeVisible();
-
-await page.locator('input[name="name_on_card"]').fill('Missq');
-await page.locator('input[name="card_number"]').fill('213342443');
-
-await page.getByRole('textbox', { name: /cvc|ex/i }).fill('54');
-await page.getByRole('textbox', { name: /mm/i }).fill('08');
-await page.getByRole('textbox', { name: /yyyy/i }).fill('1999');
-
-await page.getByRole('button', { name: /pay and confirm order/i }).click();
- 
-})
+  await home.goToCart();
+  await cart.expectItemsCount(3);
+  await cart.removeAllItems();
+  await cart.expectItemsCount(0);
+});

@@ -1,56 +1,16 @@
-import { Page, Locator, expect } from '@playwright/test';
-
+import { Page } from '@playwright/test';
 export class LoginSignupPage {
-
-  page: Page;
-
-  signupOrLoginLink: Locator;
-  signupNameInput: Locator;
-  signupEmailInput: Locator;
-  signupButton: Locator;
-  enterAccountInfoText: Locator;
-
-  constructor(page: Page) {
-
-    this.page = page;
-
-    // Locators
-    this.signupOrLoginLink =
-      page.locator('a[href="/login"]');
-
-    this.signupNameInput =
-      page.locator('input[data-qa="signup-name"]');
-
-    this.signupEmailInput =
-      page.locator('input[data-qa="signup-email"]');
-
-    this.signupButton =
-      page.locator('button[data-qa="signup-button"]');
-
-    this.enterAccountInfoText =
-      page.getByText(/enter account information/i);
-  }
-
-  // Actions
-  async navigateToLoginSignupPage() {
-    await this.signupOrLoginLink.click();
-  }
-
-  async enterSignupDetails(name: string, email: string) {
-    await this.signupNameInput.fill(name);
-    await this.signupEmailInput.fill(email);
-  }
-
-  async clickSignupButton() {
-    await this.signupButton.click();
-  }
-
-  async verifyAccountInfoPageVisible() {
-    await expect(this.enterAccountInfoText).toBeVisible();
-  }
+  constructor(private page: Page) {}
 
   async startSignup(name: string, email: string) {
-    await this.enterSignupDetails(name, email);
-    await this.clickSignupButton();
+    await this.page.locator('[data-qa="signup-name"]').fill(name);
+    await this.page.locator('[data-qa="signup-email"]').fill(email);
+    await this.page.getByRole('button', { name: /signup/i }).click();
+  }
+
+  async login(email: string, password: string) {
+    await this.page.locator('[data-qa="login-email"]').fill(email);
+    await this.page.locator('[data-qa="login-password"]').fill(password);
+    await this.page.locator('[data-qa="login-button"]').click();
   }
 }

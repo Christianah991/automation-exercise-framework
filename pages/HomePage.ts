@@ -1,14 +1,29 @@
-import { Page } from '@playwright/test'
+import { Page, expect } from '@playwright/test';
 
 export class HomePage {
-
   constructor(private page: Page) {}
 
-  async navigate() {
-    await this.page.goto('https://automationexercise.com/')
+  async openHomePage() {
+    await this.page.goto('https://automationexercise.com/', {
+      waitUntil: 'domcontentloaded',
+    });
   }
 
-  async clickSignupLogin() {
-    await this.page.click('a[href="/login"]')
+  async verifyHomePageVisible() {
+    await expect(this.page).toHaveTitle(/Automation Exercise/);
+  }
+
+  async goToLogin() {
+    await this.page.getByRole('banner').getByRole('link', { name: 'Signup / Login' }).click();
+  }
+
+  async goToProducts() {
+    await this.page.getByRole('banner').getByRole('link', { name: 'Products' }).click();
+  }
+
+  async goToCart() {
+    await this.page.goto('https://automationexercise.com/view_cart', {
+      waitUntil: 'domcontentloaded',
+    });
   }
 }
